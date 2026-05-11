@@ -6,6 +6,7 @@ export default function BookingForm({ onBack }: { onBack: () => void }) {
   const [step, setStep] = useState(1);
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState('');
+  const [doctorViewMode, setDoctorViewMode] = useState<'list' | 'calendar'>('calendar');
   const [selectedDoctorForModal, setSelectedDoctorForModal] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState<any>(null);
   const [selectedTime, setSelectedTime] = useState('');
@@ -127,79 +128,149 @@ export default function BookingForm({ onBack }: { onBack: () => void }) {
         {/* Step 2: Doctor */}
         {step === 2 && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-xl font-bold mb-6 text-slate-800">پزشک معالج خود را انتخاب کنید</h2>
-            
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                <input 
-                  type="text" 
-                  placeholder="جستجوی نام پزشک یا تخصص..." 
-                  value={doctorSearchQuery}
-                  onChange={e => setDoctorSearchQuery(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl py-3 pr-10 pl-4 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all text-sm bg-slate-50"
-                />
-              </div>
-              <div className="w-full sm:w-48 relative">
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <Star className="w-4 h-4 text-slate-400 fill-slate-400" />
-                </div>
-                <select 
-                  value={minRatingFilter}
-                  onChange={e => setMinRatingFilter(Number(e.target.value))}
-                  className="w-full border border-slate-200 rounded-xl py-3 pr-9 pl-4 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all text-sm text-slate-700 bg-slate-50 appearance-none"
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <h2 className="text-xl font-bold text-slate-800">پزشک معالج خود را انتخاب کنید</h2>
+              <div className="flex bg-slate-100 p-1 rounded-xl">
+                <button 
+                  onClick={() => setDoctorViewMode('list')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${doctorViewMode === 'list' ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
-                  <option value={0}>همه امتیازها</option>
-                  <option value={4.5}>بالای ۴.۵ ستاره</option>
-                  <option value={4}>بالای ۴ ستاره</option>
-                </select>
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                </div>
+                  نمایش لیست
+                </button>
+                <button 
+                  onClick={() => setDoctorViewMode('calendar')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${doctorViewMode === 'calendar' ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  نمایش تقویم
+                </button>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {availableDoctors.length > 0 ? availableDoctors.map(doctor => {
-                const isSelected = selectedDoctor === doctor.id;
-                return (
-                  <button
-                    key={doctor.id}
-                    onClick={() => { setSelectedDoctor(doctor.id); handleNext(); }}
-                    className={`flex items-start p-4 rounded-2xl border-2 text-start transition-all cursor-pointer w-full relative group
-                      ${isSelected ? 'border-primary-500 bg-primary-50 shadow-sm' : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}
-                  >
-                    <div className="w-14 h-14 shrink-0 bg-slate-200 rounded-full flex items-center justify-center me-4 overflow-hidden shadow-sm">
-                      {doctor.avatarUrl ? (
-                         <img src={doctor.avatarUrl} alt={doctor.name} className="w-full h-full object-cover" />
-                      ) : (
-                         <User className="w-8 h-8 text-slate-400" />
-                      )}
+            
+            {doctorViewMode === 'list' ? (
+              <>
+                <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                  <div className="relative flex-1">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                    <input 
+                      type="text" 
+                      placeholder="جستجوی نام پزشک یا تخصص..." 
+                      value={doctorSearchQuery}
+                      onChange={e => setDoctorSearchQuery(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl py-3 pr-10 pl-4 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all text-sm bg-slate-50"
+                    />
+                  </div>
+                  <div className="w-full sm:w-48 relative">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <Star className="w-4 h-4 text-slate-400 fill-slate-400" />
                     </div>
-                    <div className="flex-1 min-w-0 pr-2">
-                      <h3 className="font-bold text-slate-900 text-lg line-clamp-1">{doctor.name}</h3>
-                      {doctor.bio && <p className="text-sm text-primary-600 font-medium mt-0.5 line-clamp-1">{doctor.bio}</p>}
-                      <div className="flex justify-between items-center mt-2">
-                        <p className="text-xs text-slate-500 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                          {doctor.experience}
-                        </p>
-                        <div 
-                          onClick={(e) => { e.stopPropagation(); setSelectedDoctorForModal(doctor); }}
-                          className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors opacity-0 group-hover:opacity-100 shadow-sm"
-                        >
-                          مشاهده پروفایل
-                        </div>
-                      </div>
+                    <select 
+                      value={minRatingFilter}
+                      onChange={e => setMinRatingFilter(Number(e.target.value))}
+                      className="w-full border border-slate-200 rounded-xl py-3 pr-9 pl-4 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all text-sm text-slate-700 bg-slate-50 appearance-none"
+                    >
+                      <option value={0}>همه امتیازها</option>
+                      <option value={4.5}>بالای ۴.۵ ستاره</option>
+                      <option value={4}>بالای ۴ ستاره</option>
+                    </select>
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                     </div>
-                  </button>
-                )
-              }) : (
-                <div className="col-span-2 text-center py-10 text-slate-500 bg-slate-50 rounded-xl">
-                  پزشکی در این بخش یافت نشد.
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {availableDoctors.length > 0 ? availableDoctors.map(doctor => {
+                    const isSelected = selectedDoctor === doctor.id;
+                    return (
+                      <button
+                        key={doctor.id}
+                        onClick={() => { setSelectedDoctor(doctor.id); handleNext(); }}
+                        className={`flex items-start p-4 rounded-2xl border-2 text-start transition-all cursor-pointer w-full relative group
+                          ${isSelected ? 'border-primary-500 bg-primary-50 shadow-sm' : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}
+                      >
+                        <div className="w-14 h-14 shrink-0 bg-slate-200 rounded-full flex items-center justify-center me-4 overflow-hidden shadow-sm">
+                          {doctor.avatarUrl ? (
+                             <img src={doctor.avatarUrl} alt={doctor.name} className="w-full h-full object-cover" />
+                          ) : (
+                             <User className="w-8 h-8 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 pr-2">
+                          <h3 className="font-bold text-slate-900 text-lg line-clamp-1">{doctor.name}</h3>
+                          {doctor.bio && <p className="text-sm text-primary-600 font-medium mt-0.5 line-clamp-1">{doctor.bio}</p>}
+                          <div className="flex justify-between items-center mt-2">
+                            <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                              {doctor.experience}
+                            </p>
+                            <div 
+                              onClick={(e) => { e.stopPropagation(); setSelectedDoctorForModal(doctor); }}
+                              className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors opacity-0 group-hover:opacity-100 shadow-sm"
+                            >
+                              مشاهده پروفایل
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  }) : (
+                    <div className="col-span-2 text-center py-10 text-slate-500 bg-slate-50 rounded-xl">
+                      پزشکی در این بخش یافت نشد.
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-3xl p-4 sm:p-6 w-full shadow-sm animate-in zoom-in-95 duration-300">
+                <h3 className="text-lg font-black text-slate-800 text-center mb-6">{monthName}</h3>
+                <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-3 text-center text-xs font-bold text-slate-400">
+                  <div>ش</div>
+                  <div>ی</div>
+                  <div>د</div>
+                  <div>س</div>
+                  <div>چ</div>
+                  <div>پ</div>
+                  <div>ج</div>
+                </div>
+                
+                <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                  {Array.from({length: startPadding}).map((_, i) => (
+                      <div key={`pad-${i}`} className="min-h-[80px] sm:min-h-[120px] bg-transparent"></div>
+                  ))}
+                  
+                  {monthDays.map(day => {
+                    const disabled = day.isDayOff || day.isPast;
+                    return (
+                      <div key={day.id} className={`min-h-[80px] sm:min-h-[120px] rounded-xl border-2 p-1 sm:p-2 flex flex-col transition-all 
+                        ${disabled ? 'border-transparent bg-slate-100/50 text-slate-400 opacity-60' : 'border-slate-100 bg-white hover:border-primary-200 hover:shadow-md'}`}>
+                        <span className="text-xs sm:text-sm font-bold text-slate-700 mb-1 sm:mb-2 text-center">{day.dayNum}</span>
+                        {!disabled && availableDoctors.length > 0 && (
+                          <div className="flex flex-col gap-1 overflow-y-auto max-h-[50px] sm:max-h-[85px] hide-scrollbar">
+                            {availableDoctors.map(doctor => (
+                              <button 
+                                key={doctor.id}
+                                onClick={() => { setSelectedDoctor(doctor.id); setSelectedDate(day); handleNext(); }}
+                                className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-slate-50 hover:bg-primary-50 hover:text-primary-700 rounded-lg sm:rounded-xl text-right transition-colors w-full group overflow-hidden border border-transparent hover:border-primary-100"
+                                title={doctor.name}
+                              >
+                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden shrink-0 bg-white border border-slate-200 group-hover:border-primary-300">
+                                  {doctor.avatarUrl ? <img src={doctor.avatarUrl} className="w-full h-full object-cover" /> : <User className="w-3 h-3 sm:w-4 sm:h-4 mx-auto my-0.5 text-slate-400" />}
+                                </div>
+                                <span className="text-[10px] sm:text-xs font-bold text-slate-600 group-hover:text-primary-700 truncate hidden sm:inline">{doctor.name.replace('دکتر ', '')}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {!disabled && availableDoctors.length === 0 && (
+                          <div className="text-[9px] text-slate-400 text-center mt-2">پزشکی یافت نشد</div>
+                        )}
+                        {disabled && <div className="text-[9px] sm:text-[10px] text-slate-400 text-center mt-1 sm:mt-2">{day.isDayOff ? 'تعطیل' : ''}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

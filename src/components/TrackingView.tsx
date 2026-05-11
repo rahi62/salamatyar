@@ -113,10 +113,15 @@ export default function TrackingView({ onBack }: { onBack: () => void }) {
                           <span className="text-[11px] text-primary-500 me-1 font-sans">کد پیگیری:</span>
                           {appointment.trackingCode}
                         </div>
-                        {isCancelled ? (
+                        {appointment.status === 'cancelled' ? (
                           <div className="flex items-center gap-1 text-red-700 bg-red-50 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-red-100">
                             <XCircle className="w-3.5 h-3.5" />
                             لغو شده
+                          </div>
+                        ) : appointment.status === 'pending' ? (
+                          <div className="flex items-center gap-1 text-amber-700 bg-amber-50 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-amber-100">
+                            <Clock className="w-3.5 h-3.5" />
+                            در انتظار تایید
                           </div>
                         ) : isPastAppointment ? (
                           <div className="flex items-center gap-1 text-slate-700 bg-slate-100 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-slate-200">
@@ -126,14 +131,14 @@ export default function TrackingView({ onBack }: { onBack: () => void }) {
                         ) : (
                           <div className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-emerald-100">
                             <CheckCircle className="w-3.5 h-3.5" />
-                            نهایی
+                            تایید شده
                           </div>
                         )}
                       </div>
                       
                       <div className="p-5 flex-1 flex flex-col gap-4">
-                        <div className={`${isCancelled ? 'bg-slate-500 shadow-slate-200' : isPastAppointment ? 'bg-slate-600 shadow-slate-200' : 'bg-primary-600 shadow-primary-200'} text-white rounded-2xl p-4 flex flex-col justify-between shadow-sm`}>
-                           <div className={`${isCancelled || isPastAppointment ? 'text-slate-200' : 'text-primary-100'} text-xs mb-1`}>زمان مراجعه</div>
+                        <div className={`${appointment.status === 'cancelled' ? 'bg-slate-500 shadow-slate-200' : appointment.status === 'pending' ? 'bg-amber-500 shadow-amber-200' : isPastAppointment ? 'bg-slate-600 shadow-slate-200' : 'bg-primary-600 shadow-primary-200'} text-white rounded-2xl p-4 flex flex-col justify-between shadow-sm`}>
+                           <div className={`${appointment.status === 'cancelled' || isPastAppointment ? 'text-slate-200' : appointment.status === 'pending' ? 'text-amber-100' : 'text-primary-100'} text-xs mb-1`}>زمان مراجعه</div>
                            <h3 className="text-lg font-bold">{appointment.dateLabel}</h3>
                            <p className="text-sm mt-1 bg-white/20 px-2 py-1 rounded-md inline-block self-start font-medium leading-none">ساعت {appointment.time}</p>
                         </div>

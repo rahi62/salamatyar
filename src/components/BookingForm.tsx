@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, User, Search, Stethoscope, ArrowLeft, CheckCircle2, Hospital, Star, X, GraduationCap, MessageSquare, Clock } from 'lucide-react';
+import { Calendar, User, Search, Stethoscope, ArrowLeft, CheckCircle2, Hospital, Star, X, GraduationCap, MessageSquare, Clock, Bell } from 'lucide-react';
 import { departments, doctors, getMonthDays, timeSlots, saveAppointment, Doctor, getAppointmentsByDoctorAndDate } from '../data';
 
 export default function BookingForm({ onBack }: { onBack: () => void }) {
@@ -13,6 +13,7 @@ export default function BookingForm({ onBack }: { onBack: () => void }) {
   const [doctorSearchQuery, setDoctorSearchQuery] = useState('');
   const [minRatingFilter, setMinRatingFilter] = useState<number>(0);
   
+  const [reminderSet, setReminderSet] = useState(false);
   const [formData, setFormData] = useState({
     patientName: '',
     nationalId: '',
@@ -454,12 +455,36 @@ export default function BookingForm({ onBack }: { onBack: () => void }) {
                </div>
             </div>
 
-            <button 
-              onClick={onBack}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold transition-all"
-            >
-              بازگشت به صفحه اصلی
-            </button>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => setReminderSet(true)}
+                disabled={reminderSet}
+                className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                  reminderSet 
+                    ? 'bg-amber-50 text-amber-600 border border-amber-200 cursor-default' 
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {reminderSet ? (
+                  <>
+                    <CheckCircle2 className="w-5 h-5" />
+                    یادآور برای ۲۴ ساعت قبل تنظیم شد
+                  </>
+                ) : (
+                  <>
+                    <Bell className="w-5 h-5" />
+                    تنظیم پیامک یادآور ۲۴ ساعت قبل از نوبت
+                  </>
+                )}
+              </button>
+              
+              <button 
+                onClick={onBack}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold transition-all"
+              >
+                بازگشت به صفحه اصلی
+              </button>
+            </div>
           </div>
         )}
       </div>

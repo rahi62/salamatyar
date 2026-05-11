@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Search, Info, Calendar, Clock, User, Phone, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
-import { getAppointmentsByNationalId, departments, doctors, Appointment } from '../data';
+import { Search, Info, Calendar, Clock, User, Phone, CheckCircle, AlertCircle, ArrowRight, XCircle } from 'lucide-react';
+import { getAppointmentsByNationalId, departments, doctors, Appointment, cancelAppointment } from '../data';
 
 export default function TrackingView({ onBack }: { onBack: () => void }) {
   const [nationalId, setNationalId] = useState('');
   const [trackingCode, setTrackingCode] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [results, setResults] = useState<Appointment[]>([]);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,6 +16,14 @@ export default function TrackingView({ onBack }: { onBack: () => void }) {
     const found = getAppointmentsByNationalId(nationalId, trackingCode);
     setResults(found);
     setHasSearched(true);
+  };
+
+  const handleCancelConfirm = () => {
+    if (cancellingId) {
+      cancelAppointment(cancellingId);
+      setResults(results.map(r => r.id === cancellingId ? { ...r, status: 'cancelled' } : r));
+      setCancellingId(null);
+    }
   };
 
   return (
@@ -75,50 +84,149 @@ export default function TrackingView({ onBack }: { onBack: () => void }) {
               <p className="mt-2 text-yellow-700/80 text-sm">لطفا کد ملی و در صورت نیاز کد پیگیری خود را با دقت بررسی نمایید.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {results.map(appointment => {
-                const doc = doctors.find(d => d.id === appointment.doctorId);
-                const dept = departments.find(d => d.id === appointment.departmentId);
+            <>
+              {(() => {
+                const today = new Date();
+                today.setHours(0,0,0,0);
                 
-                return (
-                  <div key={appointment.id} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
-                    <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                      <div className="flex items-center gap-2 text-primary-700 font-mono font-bold bg-primary-50 px-2.5 py-1.5 rounded-lg text-sm border border-primary-100">
-                        <span className="text-[11px] text-primary-500 me-1 font-sans">کد پیگیری:</span>
-                        {appointment.trackingCode}
-                      </div>
-                      <div className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-emerald-100">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        نهایی
-                      </div>
-                    </div>
-                    
-                    <div className="p-5 flex-1 flex flex-col gap-4">
-                      <div className="bg-primary-600 text-white rounded-2xl p-4 flex flex-col justify-between shadow-sm shadow-primary-200">
-                         <div className="text-primary-100 text-xs mb-1">زمان مراجعه</div>
-                         <h3 className="text-lg font-bold">{appointment.dateLabel}</h3>
-                         <p className="text-sm mt-1 bg-white/20 px-2 py-1 rounded-md inline-block self-start font-medium leading-none">ساعت {appointment.time}</p>
-                      </div>
+                const upcoming = results.filter(a => {
+                  const d = new Date(a.date);
+                  d.setHours(0,0,0,0);
+                  return d.getTime() >= today.getTime();
+                }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                
+                const past = results.filter(a => {
+                  const d = new Date(a.date);
+                  d.setHours(0,0,0,0);
+                  return d.getTime() < today.getTime();
+                }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-                      <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100 flex-1">
-                         <div className="flex items-center gap-2">
-                           <User className="w-4 h-4 text-slate-400" />
-                           <span className="font-bold text-slate-900 text-sm">{appointment.patientName}</span>
-                         </div>
-                         <div className="flex items-start gap-2">
-                           <Info className="w-4 h-4 text-slate-400 mt-0.5" />
-                           <div className="flex flex-col">
-                             <span className="font-bold text-slate-900 text-sm">{doc?.name}</span>
-                             <span className="text-xs text-slate-500 mt-0.5">{dept?.name}</span>
+                const renderAppointmentCard = (appointment: Appointment, isPastAppointment: boolean) => {
+                  const doc = doctors.find(d => d.id === appointment.doctorId);
+                  const dept = departments.find(d => d.id === appointment.departmentId);
+                  const isCancelled = appointment.status === 'cancelled';
+                  
+                  return (
+                    <div key={appointment.id} className={`bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col ${isCancelled || isPastAppointment ? 'opacity-70 grayscale-[0.2]' : ''}`}>
+                      <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <div className="flex items-center gap-2 text-primary-700 font-mono font-bold bg-primary-50 px-2.5 py-1.5 rounded-lg text-sm border border-primary-100">
+                          <span className="text-[11px] text-primary-500 me-1 font-sans">کد پیگیری:</span>
+                          {appointment.trackingCode}
+                        </div>
+                        {isCancelled ? (
+                          <div className="flex items-center gap-1 text-red-700 bg-red-50 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-red-100">
+                            <XCircle className="w-3.5 h-3.5" />
+                            لغو شده
+                          </div>
+                        ) : isPastAppointment ? (
+                          <div className="flex items-center gap-1 text-slate-700 bg-slate-100 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-slate-200">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            انجام شده
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-emerald-100">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            نهایی
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="p-5 flex-1 flex flex-col gap-4">
+                        <div className={`${isCancelled ? 'bg-slate-500 shadow-slate-200' : isPastAppointment ? 'bg-slate-600 shadow-slate-200' : 'bg-primary-600 shadow-primary-200'} text-white rounded-2xl p-4 flex flex-col justify-between shadow-sm`}>
+                           <div className={`${isCancelled || isPastAppointment ? 'text-slate-200' : 'text-primary-100'} text-xs mb-1`}>زمان مراجعه</div>
+                           <h3 className="text-lg font-bold">{appointment.dateLabel}</h3>
+                           <p className="text-sm mt-1 bg-white/20 px-2 py-1 rounded-md inline-block self-start font-medium leading-none">ساعت {appointment.time}</p>
+                        </div>
+
+                        <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100 flex-1">
+                           <div className="flex items-center gap-2">
+                             <User className="w-4 h-4 text-slate-400" />
+                             <span className="font-bold text-slate-900 text-sm">{appointment.patientName}</span>
                            </div>
-                         </div>
+                           <div className="flex items-start gap-2">
+                             <Info className="w-4 h-4 text-slate-400 mt-0.5" />
+                             <div className="flex flex-col">
+                               <span className="font-bold text-slate-900 text-sm">{doc?.name}</span>
+                               <span className="text-xs text-slate-500 mt-0.5">{dept?.name}</span>
+                             </div>
+                           </div>
+                        </div>
+                        
+                        {!isCancelled && !isPastAppointment && (
+                          <button 
+                            onClick={() => setCancellingId(appointment.id)}
+                            className="w-full bg-white hover:bg-red-50 text-red-600 border border-slate-200 hover:border-red-200 py-3 rounded-xl font-bold flex justify-center items-center gap-2 text-sm transition-colors mt-auto"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            لغو این نوبت
+                          </button>
+                        )}
                       </div>
                     </div>
+                  );
+                };
+
+                return (
+                  <div className="space-y-12">
+                    {upcoming.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                          <Calendar className="w-5 h-5 text-primary-500" />
+                          نوبت‌های پیش رو
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {upcoming.map(a => renderAppointmentCard(a, false))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {past.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2 opacity-80">
+                          <Clock className="w-5 h-5 text-slate-500" />
+                          تاریخچه مراجعات قبلی
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {past.map(a => renderAppointmentCard(a, true))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
-              })}
-            </div>
+              })()}
+            </>
           )}
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {cancellingId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setCancellingId(null)}></div>
+          <div className="relative bg-white rounded-3xl shadow-xl w-full max-w-sm flex flex-col p-6 animate-in zoom-in-95 duration-200 text-center items-center">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            <h3 className="font-bold text-xl text-slate-900 mb-2">لغو نوبت</h3>
+            <p className="text-slate-500 text-sm leading-relaxed mb-6">
+              آیا از لغو این نوبت اطمینان دارید؟ 
+              این عملیات غیر قابل بازگشت است و زمان شما برای سایر بیماران آزاد خواهد شد.
+            </p>
+            <div className="flex gap-3 w-full">
+              <button 
+                onClick={() => setCancellingId(null)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold transition-colors text-sm"
+              >
+                انصراف
+              </button>
+              <button 
+                onClick={handleCancelConfirm}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold transition-colors text-sm shadow-md shadow-red-200"
+              >
+                تایید و لغو نوبت
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

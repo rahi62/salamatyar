@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
-import { Calendar, User, Search, Stethoscope, ArrowLeft, CheckCircle2, Hospital } from 'lucide-react';
-import { departments, doctors, getNextDays, timeSlots, saveAppointment } from '../data';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calendar, User, Search, Stethoscope, ArrowLeft, CheckCircle2, Hospital, Star, X, GraduationCap, MessageSquare, Clock } from 'lucide-react';
+import { departments, doctors, getMonthDays, timeSlots, saveAppointment, Doctor, getAppointmentsByDoctorAndDate } from '../data';
 
 export default function BookingForm({ onBack }: { onBack: () => void }) {
   const [step, setStep] = useState(1);
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState('');
+  const [selectedDoctorForModal, setSelectedDoctorForModal] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState<any>(null);
   const [selectedTime, setSelectedTime] = useState('');
+  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+  const [doctorSearchQuery, setDoctorSearchQuery] = useState('');
+  const [minRatingFilter, setMinRatingFilter] = useState<number>(0);
   
   const [formData, setFormData] = useState({
     patientName: '',
@@ -17,8 +21,30 @@ export default function BookingForm({ onBack }: { onBack: () => void }) {
   
   const [bookingResult, setBookingResult] = useState<any>(null);
 
-  const availableDoctors = doctors.filter(d => d.departmentId === selectedDept);
-  const availableDays = getNextDays();
+  const availableDoctors = doctors.filter(d => {
+    if (d.departmentId !== selectedDept) return false;
+    if (doctorSearchQuery && !d.name.toLowerCase().includes(doctorSearchQuery.toLowerCase()) && !(d.bio && d.bio.toLowerCase().includes(doctorSearchQuery.toLowerCase()))) return false;
+    if (minRatingFilter > 0 && (!d.rating || d.rating < minRatingFilter)) return false;
+    return true;
+  });
+  
+  const calendarData = useMemo(() => getMonthDays(), []);
+  const { days: monthDays, monthName, startPadding } = calendarData;
+
+  useEffect(() => {
+    if (selectedDoctor && selectedDate) {
+      const appointments = getAppointmentsByDoctorAndDate(selectedDoctor, selectedDate.value);
+      const booked = appointments.map(a => a.time);
+      setBookedTimes(booked);
+      
+      // If the currently selected time is booked, deselect it
+      if (selectedTime && booked.includes(selectedTime)) {
+        setSelectedTime('');
+      }
+    } else {
+      setBookedTimes([]);
+    }
+  }, [selectedDoctor, selectedDate]);
 
   const handleNext = () => setStep(s => s + 1);
   const handlePrev = () => setStep(s => s - 1);
@@ -101,6 +127,37 @@ export default function BookingForm({ onBack }: { onBack: () => void }) {
         {step === 2 && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <h2 className="text-xl font-bold mb-6 text-slate-800">پزشک معالج خود را انتخاب کنید</h2>
+            
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                <input 
+                  type="text" 
+                  placeholder="جستجوی نام پزشک یا تخصص..." 
+                  value={doctorSearchQuery}
+                  onChange={e => setDoctorSearchQuery(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl py-3 pr-10 pl-4 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all text-sm bg-slate-50"
+                />
+              </div>
+              <div className="w-full sm:w-48 relative">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <Star className="w-4 h-4 text-slate-400 fill-slate-400" />
+                </div>
+                <select 
+                  value={minRatingFilter}
+                  onChange={e => setMinRatingFilter(Number(e.target.value))}
+                  className="w-full border border-slate-200 rounded-xl py-3 pr-9 pl-4 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all text-sm text-slate-700 bg-slate-50 appearance-none"
+                >
+                  <option value={0}>همه امتیازها</option>
+                  <option value={4.5}>بالای ۴.۵ ستاره</option>
+                  <option value={4}>بالای ۴ ستاره</option>
+                </select>
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {availableDoctors.length > 0 ? availableDoctors.map(doctor => {
                 const isSelected = selectedDoctor === doctor.id;
@@ -108,15 +165,31 @@ export default function BookingForm({ onBack }: { onBack: () => void }) {
                   <button
                     key={doctor.id}
                     onClick={() => { setSelectedDoctor(doctor.id); handleNext(); }}
-                    className={`flex items-center p-4 rounded-xl border-2 text-start transition-all cursor-pointer w-full
+                    className={`flex items-start p-4 rounded-2xl border-2 text-start transition-all cursor-pointer w-full relative group
                       ${isSelected ? 'border-primary-500 bg-primary-50 shadow-sm' : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}
                   >
-                    <div className="w-14 h-14 bg-slate-200 rounded-full flex items-center justify-center me-4 overflow-hidden">
-                       <User className="w-8 h-8 text-slate-400" />
+                    <div className="w-14 h-14 shrink-0 bg-slate-200 rounded-full flex items-center justify-center me-4 overflow-hidden shadow-sm">
+                      {doctor.avatarUrl ? (
+                         <img src={doctor.avatarUrl} alt={doctor.name} className="w-full h-full object-cover" />
+                      ) : (
+                         <User className="w-8 h-8 text-slate-400" />
+                      )}
                     </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900">{doctor.name}</h3>
-                      <p className="text-sm text-slate-500 mt-1">{doctor.experience}</p>
+                    <div className="flex-1 min-w-0 pr-2">
+                      <h3 className="font-bold text-slate-900 text-lg line-clamp-1">{doctor.name}</h3>
+                      {doctor.bio && <p className="text-sm text-primary-600 font-medium mt-0.5 line-clamp-1">{doctor.bio}</p>}
+                      <div className="flex justify-between items-center mt-2">
+                        <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                          {doctor.experience}
+                        </p>
+                        <div 
+                          onClick={(e) => { e.stopPropagation(); setSelectedDoctorForModal(doctor); }}
+                          className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors opacity-0 group-hover:opacity-100 shadow-sm"
+                        >
+                          مشاهده پروفایل
+                        </div>
+                      </div>
                     </div>
                   </button>
                 )
@@ -135,39 +208,120 @@ export default function BookingForm({ onBack }: { onBack: () => void }) {
             <h2 className="text-xl font-bold mb-6 text-slate-800">زمان مراجعه را مشخص کنید</h2>
             
             <h3 className="text-sm font-semibold text-slate-500 mb-3">روز مراجعه:</h3>
-            <div className="flex gap-3 overflow-x-auto pb-4 hide-scrollbar">
-              {availableDays.map(day => {
-                const isSelected = selectedDate?.id === day.id;
-                return (
-                  <button
-                    key={day.id}
-                    onClick={() => setSelectedDate(day)}
-                    className={`whitespace-nowrap px-5 py-3 rounded-xl border-2 font-medium transition-all
-                      ${isSelected ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-slate-200 hover:border-slate-300 text-slate-600'}`}
-                  >
-                    {day.label}
-                  </button>
-                )
-              })}
+            <div className="bg-slate-50 border border-slate-200 rounded-3xl p-4 sm:p-6 mb-8 max-w-sm mx-auto shadow-sm">
+               <h3 className="text-lg font-black text-slate-800 text-center mb-6">{monthName}</h3>
+               {/* 7 columns grid for days of week */}
+               <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-3 text-center text-xs font-bold text-slate-400">
+                 <div>ش</div>
+                 <div>ی</div>
+                 <div>د</div>
+                 <div>س</div>
+                 <div>چ</div>
+                 <div>پ</div>
+                 <div>ج</div>
+               </div>
+               
+               <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                 {/* Padding boxes */}
+                 {Array.from({length: startPadding}).map((_, i) => (
+                    <div key={`pad-${i}`} className="aspect-square"></div>
+                 ))}
+                 
+                 {/* Real days */}
+                 {monthDays.map(day => {
+                   const isSelected = selectedDate?.id === day.id;
+                   const isOff = day.isDayOff;
+                   const isPast = day.isPast;
+                   const disabled = isOff || isPast;
+
+                   return (
+                     <button
+                       key={day.id}
+                       disabled={disabled}
+                       onClick={() => setSelectedDate(day)}
+                       className={`aspect-square flex flex-col items-center justify-center rounded-xl sm:rounded-2xl border-2 transition-all p-1 
+                         ${disabled ? 'border-transparent bg-slate-100 text-slate-400 cursor-not-allowed opacity-50' : 
+                           isSelected ? 'border-primary-500 bg-primary-500 text-white shadow-md shadow-primary-500/30' : 
+                          'border-transparent hover:border-slate-300 bg-white shadow-sm text-slate-700 hover:shadow-md'}`}
+                     >
+                       <span className="text-sm sm:text-base font-bold">{day.dayNum}</span>
+                     </button>
+                   );
+                 })}
+               </div>
+               <div className="flex items-center justify-center gap-4 mt-6 text-[10px] sm:text-xs font-medium border-t border-slate-200 pt-4">
+                 <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded flex-shrink-0 bg-white border border-slate-300"></div><span className="text-slate-500">آزاد</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded flex-shrink-0 bg-primary-500 shadow-sm"></div><span className="text-slate-700">انتخاب شما</span></div>
+                 <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded flex-shrink-0 bg-slate-100 border border-slate-200"></div><span className="text-slate-400">غیرقابل رزرو</span></div>
+               </div>
             </div>
 
             {selectedDate && (
-               <div className="mt-8 animate-in fade-in duration-300">
-                 <h3 className="text-sm font-semibold text-slate-500 mb-3">ساعت مراجعه:</h3>
-                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                   {timeSlots.map(time => {
-                     const isSelected = selectedTime === time;
-                     return (
-                        <button
-                          key={time}
-                          onClick={() => setSelectedTime(time)}
-                          className={`py-2 rounded-lg border text-sm font-medium focus:outline-none transition-all
-                            ${isSelected ? 'border-primary-500 bg-primary-500 text-white shadow-md shadow-primary-500/20' : 'border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-50'}`}
-                        >
-                          {time}
-                        </button>
-                     )
-                   })}
+               <div className="mt-10 animate-in fade-in duration-300">
+                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 border-b border-slate-100 pb-4">
+                   <h3 className="text-sm font-semibold text-slate-600 flex items-center gap-2">
+                     <Clock className="w-5 h-5 text-slate-400" />
+                     ساعات حضور پزشک آنلاین
+                   </h3>
+                   <div className="flex items-center gap-4 text-xs font-medium">
+                     <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-md bg-white border border-slate-300"></div><span className="text-slate-500">نوبت آزاد</span></div>
+                     <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-md bg-slate-100 border border-slate-200"></div><span className="text-slate-500">رزرو شده</span></div>
+                     <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-md bg-primary-500 shadow-sm shadow-primary-500/30"></div><span className="text-slate-700">انتخاب شما</span></div>
+                   </div>
+                 </div>
+                 
+                 <div className="space-y-6">
+                   <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                     <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2">
+                       <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
+                       شیفت صبح <span className="text-slate-400 font-normal ml-1">(۰۹:۰۰ الی ۱۲:۰۰)</span>
+                     </h4>
+                     <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
+                       {timeSlots.filter(t => parseInt(t.split(':')[0]) < 13).map(time => {
+                         const isSelected = selectedTime === time;
+                         const isBooked = bookedTimes.includes(time);
+                         return (
+                            <button
+                              key={time}
+                              disabled={isBooked}
+                              onClick={() => setSelectedTime(time)}
+                              className={`py-2.5 rounded-xl border text-sm font-bold focus:outline-none transition-all duration-200
+                                ${isSelected ? 'border-primary-500 bg-primary-500 text-white shadow-md shadow-primary-500/20 transform scale-[1.02]' : 
+                                  isBooked ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed opacity-70' : 
+                                  'border-slate-200 bg-white hover:border-primary-300 text-slate-700 hover:bg-primary-50 hover:text-primary-700 hover:shadow-sm'}`}
+                            >
+                              {time}
+                            </button>
+                         )
+                       })}
+                     </div>
+                   </div>
+
+                   <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                     <h4 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2">
+                       <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                       شیفت عصر <span className="text-slate-400 font-normal ml-1">(۱۴:۰۰ الی ۱۹:۰۰)</span>
+                     </h4>
+                     <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
+                       {timeSlots.filter(t => parseInt(t.split(':')[0]) >= 13).map(time => {
+                         const isSelected = selectedTime === time;
+                         const isBooked = bookedTimes.includes(time);
+                         return (
+                            <button
+                              key={time}
+                              disabled={isBooked}
+                              onClick={() => setSelectedTime(time)}
+                              className={`py-2.5 rounded-xl border text-sm font-bold focus:outline-none transition-all duration-200
+                                ${isSelected ? 'border-primary-500 bg-primary-500 text-white shadow-md shadow-primary-500/20 transform scale-[1.02]' : 
+                                  isBooked ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed opacity-70' : 
+                                  'border-slate-200 bg-white hover:border-primary-300 text-slate-700 hover:bg-primary-50 hover:text-primary-700 hover:shadow-sm'}`}
+                            >
+                              {time}
+                            </button>
+                         )
+                       })}
+                     </div>
+                   </div>
                  </div>
                </div>
             )}
@@ -309,6 +463,110 @@ export default function BookingForm({ onBack }: { onBack: () => void }) {
           </div>
         )}
       </div>
+
+      {/* Doctor Details Modal */}
+      {selectedDoctorForModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedDoctorForModal(null)}></div>
+          <div className="relative bg-white rounded-3xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="relative p-6 flex flex-col items-center border-b border-slate-100 pb-8 mt-4">
+              <button 
+                onClick={() => setSelectedDoctorForModal(null)}
+                className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center overflow-hidden shadow-md ring-4 ring-white mb-4">
+                {selectedDoctorForModal.avatarUrl ? (
+                   <img src={selectedDoctorForModal.avatarUrl} alt={selectedDoctorForModal.name} className="w-full h-full object-cover" />
+                ) : (
+                   <User className="w-12 h-12 text-slate-400" />
+                )}
+              </div>
+              <h3 className="font-black text-xl text-slate-900">{selectedDoctorForModal.name}</h3>
+              <p className="text-primary-600 font-bold mt-1 text-sm">{selectedDoctorForModal.bio}</p>
+              
+              <div className="flex items-center gap-4 mt-4">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-bold border border-green-100">
+                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                   {selectedDoctorForModal.experience}
+                </div>
+                {selectedDoctorForModal.rating && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-sm font-bold border border-orange-100">
+                     <Star className="w-4 h-4 fill-orange-500" />
+                     {selectedDoctorForModal.rating}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Content (Scrollable) */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* Education */}
+              {selectedDoctorForModal.education && (
+                <div>
+                  <h4 className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-3">
+                    <GraduationCap className="w-5 h-5 text-slate-400" />
+                    تحصیلات و مدارک
+                  </h4>
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-sm text-slate-600 leading-relaxed font-medium">
+                    {selectedDoctorForModal.education}
+                  </div>
+                </div>
+              )}
+
+              {/* Reviews */}
+              {selectedDoctorForModal.reviews && selectedDoctorForModal.reviews.length > 0 && (
+                <div>
+                  <h4 className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-3">
+                    <MessageSquare className="w-5 h-5 text-slate-400" />
+                    نظرات بیماران ({selectedDoctorForModal.reviews.length})
+                  </h4>
+                  <div className="space-y-3 block">
+                    {selectedDoctorForModal.reviews.map(review => (
+                      <div key={review.id} className="bg-white rounded-2xl p-4 border border-slate-200">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold text-slate-800 text-sm">{review.author}</span>
+                          <div className="flex items-center gap-2">
+                             <div className="flex items-center">
+                               {Array.from({length: 5}).map((_, i) => (
+                                 <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-orange-400 text-orange-400' : 'fill-slate-200 text-slate-200'}`} />
+                               ))}
+                             </div>
+                             <span className="text-[10px] text-slate-400">{review.date}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                          {review.comment}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50">
+              <button 
+                onClick={() => {
+                  setSelectedDoctor(selectedDoctorForModal.id);
+                  handleNext();
+                  setSelectedDoctorForModal(null);
+                }}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-bold shadow-lg shadow-slate-900/20 transition-all flex justify-center items-center gap-2 text-sm"
+              >
+                انتخاب این پزشک و ادامه
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            </div>
+            
+          </div>
+        </div>
+      )}
     </div>
   );
 }

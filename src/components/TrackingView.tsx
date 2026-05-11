@@ -181,7 +181,7 @@ export default function TrackingView({ onBack }: { onBack: () => void }) {
                     )}
                     
                     {past.length > 0 && (
-                      <div>
+                      <div className="pt-8 border-t border-slate-200">
                         <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2 opacity-80">
                           <Clock className="w-5 h-5 text-slate-500" />
                           تاریخچه مراجعات قبلی

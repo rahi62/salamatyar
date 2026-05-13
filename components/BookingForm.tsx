@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, User, Search, Stethoscope, ArrowLeft, CheckCircle2, Hospital, Star, X, GraduationCap, MessageSquare, Clock, Bell } from 'lucide-react';
 import { departments, doctors, getMonthDays, timeSlots, saveAppointment, Doctor, getAppointmentsByDoctorAndDate } from '@/data';
+import Link from 'next/link';
 
 export default function BookingForm({ onBack }: { onBack: () => void }) {
   const [step, setStep] = useState(1);
